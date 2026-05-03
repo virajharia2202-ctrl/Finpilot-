@@ -49,7 +49,10 @@ const CURRENCIES=[
   {code:'MXN',symbol:'MX$',name:'Mexican Peso'},{code:'ZAR',symbol:'R',name:'South African Rand'},
 ];
 let userCurrency = JSON.parse(localStorage.getItem('fp_currency')||'{"code":"USD","symbol":"$","name":"US Dollar"}');
-const CS  = () => userCurrency.symbol;
+const CS = () => {
+  try { const s=localStorage.getItem('fp_currency'); if(s) userCurrency=JSON.parse(s); } catch(e) {}
+  return userCurrency.symbol;
+};
 const setCurrency = c => { userCurrency=c; localStorage.setItem('fp_currency',JSON.stringify(c)); };
 
 // ── Categories ──
@@ -232,7 +235,14 @@ window.setTab = tab => {
 };
 
 // ── Helpers ──
-function getMonthTx(month){ const m=month||currMonth(); return transactions.filter(t=>t.date?.substring(0,7)===m); }
+function getMonthTx(month){
+  const m=month||currMonth();
+  return transactions.filter(t=>{
+    if(!t.date) return false;
+    const ds = typeof t.date==='string' ? t.date : (t.date.toDate ? t.date.toDate().toISOString() : String(t.date));
+    return ds.substring(0,7)===m;
+  });
+}
 function getSummary(month){
   const tx=getMonthTx(month);
   const income=tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
@@ -276,7 +286,7 @@ function renderDashboard(){
     ${exceeded.length?`<div class="alert-strip" onclick="window.setTab('budget')">🚨 ${exceeded.length} budget${exceeded.length>1?'s':''} exceeded — tap to view</div>`:''}
     <div class="balance-card">
       <div class="bal-glow"></div>
-      <div class="bal-label">NET BALANCE</div>
+      <div class="bal-label">THIS MONTH BALANCE</div>
       <div class="bal-amount ${s.balance>=0?'positive':'negative'}">${s.balance>=0?'+':'-'}${fmtC(Math.abs(s.balance))}</div>
       <div class="bal-period">${monthLabel()}</div>
       ${accounts.length?`<div class="bal-networth">Net Worth: <strong>${fmtC(netWorth)}</strong></div>`:''}
@@ -286,12 +296,27 @@ function renderDashboard(){
         <div class="ie-item"><div class="ie-dot" style="background:var(--expense)"></div><div><div class="ie-lbl">EXPENSES</div><div class="ie-val expense-val">-${fmtC(s.expense)}</div></div></div>
       </div>
     </div>
+    ${transactions.length>0 && s.income===0 && s.expense===0 ? `<div style="margin:6px 16px 0;background:rgba(255,184,0,0.08);border:1px solid rgba(255,184,0,0.3);border-radius:10px;padding:9px 13px;font-size:12px;color:#FFB800">⚠️ No transactions in <strong>${monthLabel()}</strong>. Your ${transactions.length} transaction(s) are in other months. <span style="text-decoration:underline;cursor:pointer" onclick="window.setTab('transactions')">View all →</span></div>` : ''}
     <div class="quick-actions">
       <button class="qa-btn primary" onclick="window.openAddTx('expense')"><span>💸</span><span>Expense</span></button>
       <button class="qa-btn secondary" onclick="window.openAddTx('income')"><span>💰</span><span>Income</span></button>
       <button class="qa-btn tertiary" onclick="window.setTab('goals')"><span>🎯</span><span>Goals</span></button>
       <button class="qa-btn quaternary" onclick="window.setTab('accounts')"><span>🏦</span><span>Accounts</span></button>
     </div>
+    ${transactions.length ? `<div style="display:flex;gap:7px;padding:10px 16px 0">
+      <div style="flex:1;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:9px 5px;text-align:center">
+        <div style="font-size:9px;color:var(--text-muted);font-weight:700;letter-spacing:0.8px;margin-bottom:3px">ALL TIME IN</div>
+        <div style="font-family:var(--font-d);font-size:12px;font-weight:800;color:var(--income)">${fmtC(transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0))}</div>
+      </div>
+      <div style="flex:1;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:9px 5px;text-align:center">
+        <div style="font-size:9px;color:var(--text-muted);font-weight:700;letter-spacing:0.8px;margin-bottom:3px">ALL TIME OUT</div>
+        <div style="font-family:var(--font-d);font-size:12px;font-weight:800;color:var(--expense)">${fmtC(transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0))}</div>
+      </div>
+      <div style="flex:1;background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:9px 5px;text-align:center">
+        <div style="font-size:9px;color:var(--text-muted);font-weight:700;letter-spacing:0.8px;margin-bottom:3px">TOTAL TX</div>
+        <div style="font-family:var(--font-d);font-size:12px;font-weight:800;color:var(--text)">${transactions.length}</div>
+      </div>
+    </div>` : ''}
     ${bd.length?`<div class="section"><div class="section-hdr"><div class="section-title">Top Spending</div><button class="see-all" onclick="window.setTab('insights')">Insights →</button></div>
     <div class="card">${bd.slice(0,4).map(item=>{const cat=getCat(item.category);const pct=s.expense>0?(item.amount/s.expense)*100:0;
       return `<div class="cat-row"><span class="cat-icon">${cat.icon}</span><span class="cat-name">${cat.label}</span><div class="cat-bar-wrap"><div class="cat-bar" style="width:${Math.min(pct,100)}%;background:${cat.color}"></div></div><span class="cat-amt">${fmtC(item.amount)}</span></div>`;
@@ -748,7 +773,18 @@ function renderProfile(){
 }
 
 window._setTheme = t => { appTheme=t; applyTheme(); renderProfile(); showToast('🎨 Theme changed!'); };
-window._setCurrency = (code,symbol,name) => { setCurrency({code,symbol,name}); renderProfile(); showToast(`💱 ${symbol} ${code} set!`); };
+window._setCurrency = (code,symbol,name) => {
+  setCurrency({code,symbol,name});
+  showToast(symbol + ' ' + code + ' set as currency!');
+  setTimeout(() => {
+    if(activeTab==='profile') renderProfile();
+    else if(activeTab==='dashboard') renderDashboard();
+    else if(activeTab==='transactions') renderTransactions();
+    else if(activeTab==='insights') renderInsights();
+    else if(activeTab==='budget') renderBudget();
+    else if(activeTab==='analytics') renderAnalytics();
+  }, 50);
+};
 window._exportCSV = () => {
   if(!transactions.length){showToast('No transactions to export','warning');return;}
   const rows=[['Date','Type','Category','Amount','Note','Account'],...transactions.map(t=>[t.date,t.type,getCat(t.category).label,t.amount,t.note||'',t.account||''])];

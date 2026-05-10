@@ -257,7 +257,7 @@ function renderHome(){
   const bUsage=getBudgetUsage();
   const exceeded=bUsage.filter(b=>b.exceeded);
   const hour=new Date().getHours();
-  const greet=hour<12?'Good morning':'hour<17?'Good afternoon':'Good evening';
+  const greet=hour<12?'Good morning':hour<17?'Good afternoon':'Good evening';
   const netWorth=getNetWorth();
 
   document.getElementById('page').innerHTML=`
@@ -265,7 +265,7 @@ function renderHome(){
     <!-- Header -->
     <div class="home-hdr">
       <div>
-        <div class="greet">${greet}, ${name} ${hour<12?'🌅':hour<17?'☀️':'🌙'}</div>
+        <div class="greet">${greet}, ${name} 👋</div>
         <div class="greet-sub">${new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</div>
       </div>
       <button class="hdr-avatar" onclick="window.setTab('settings')">${(name[0]||'U').toUpperCase()}</button>
@@ -627,7 +627,8 @@ function renderBudget(){
       <div class="bo-item"><div class="bo-lbl">Spent</div><div class="bo-val ${ts>tb?'expense-val':''}">${fmtC(ts)}</div></div>
       <div class="bo-div"></div>
       <div class="bo-item"><div class="bo-lbl">Remaining</div><div class="bo-val ${tb-ts<0?'expense-val':'income-val'}">${fmtC(Math.abs(tb-ts))}</div></div>
-      ${usage.filter(b=>b.exceeded).length?`<div class="bo-alert">🚨 ${usage.filter(b=>b.exceeded).length} budget(s) exceeded this month</div>`:''}</div>`:''}
+    </div>
+    ${usage.filter(b=>b.exceeded).length?'<div class="bud-overview-alert">🚨 '+usage.filter(b=>b.exceeded).length+' budget(s) exceeded this month</div>':''}`:''}
     ${usage.length===0?`<div class="empty-state"><div class="es-emoji">🎯</div><div class="es-title">No budgets set</div><div class="es-sub">Set monthly spending limits to stay on track</div><button class="es-btn" onclick="window.openAddBudget()">Set First Budget</button></div>`:
     usage.map(b=>{const cat=getCat(b.category);const pct=Math.min(b.percentage,100);const bc=b.exceeded?'#EF4444':b.percentage>75?'#F59E0B':'#10B981';
       return `<div class="bud-card ${b.exceeded?'bud-over':''}">
@@ -1224,14 +1225,10 @@ html,body,#app{height:-webkit-fill-available;}
 /* BUDGET */
 .budget-overview{margin:0 16px 14px;background:var(--card);border:1px solid var(--border2);border-radius:var(--rl);padding:14px;}
 .bo-item{flex:1;text-align:center;}
+.bo-div{width:1px;height:28px;background:var(--border2);flex-shrink:0;}
 .bo-lbl{font-size:9px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:3px;text-transform:uppercase;}
 .bo-val{font-size:14px;font-weight:800;}
-.budget-overview{display:flex;flex-direction:column;}
-.budget-overview>.bo-item{display:none;}
 .bo-alert{margin-top:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:8px;text-align:center;font-size:12px;font-weight:600;color:#EF4444;}
-.budget-overview{flex-direction:row;align-items:center;}
-.budget-overview>.bo-item{display:block;}
-.budget-overview>.bo-alert{display:none;}
 .bud-overview-alert{margin:8px 16px 0;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:8px;text-align:center;font-size:12px;font-weight:600;color:#EF4444;}
 .bud-card{background:var(--card);border:1px solid var(--border2);border-radius:var(--rl);padding:14px;margin:0 16px 10px;}
 .bud-over{border-color:rgba(239,68,68,0.4);}
@@ -1406,11 +1403,6 @@ input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-in
 
 <div id="modal" onclick="if(event.target===this)window.closeModal()"></div>
 
-<script>
-// Fix JS template literal with ternary inside string
-document.querySelectorAll('script[type="module"]').forEach(s=>{
-  // Already loaded via module
-});
-</script>
+
 </body>
 </html>
